@@ -14,7 +14,7 @@
     "moduleResolution": "bundler",
     // 采用“打包工具”解析模式。这是目前最智能的模式，允许你不带后缀或者带 .ts 后缀导入文件。
 
-    "allowImportingTsExtensions": true,
+    // "allowImportingTsExtensions": true,
     // 核心开关：允许你在 import 语句中显式书写 ".ts" 扩展名。
 
     "noEmit": true,

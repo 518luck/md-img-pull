@@ -96,7 +96,9 @@ class DownloadProgressManager {
   finish(): void {
     if (this.spinner) {
       if (this.completedCount > 0) {
-        this.spinner.succeed(`下载完成: ${this.completedCount}/${this.totalCount} 张图片`);
+        this.spinner.succeed(
+          `下载完成: ${this.completedCount}/${this.totalCount} 张图片`,
+        );
       } else {
         this.spinner.stop();
       }

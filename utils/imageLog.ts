@@ -85,10 +85,10 @@ class ImageLogManager {
 
     // 构建日志内容
     const lines: string[] = [];
-    lines.push("=" .repeat(60));
+    lines.push("=".repeat(60));
     lines.push("图片处理日志");
     lines.push(`生成时间: ${new Date().toLocaleString("zh-CN")}`);
-    lines.push("=" .repeat(60));
+    lines.push("=".repeat(60));
     lines.push("");
 
     // 按 Markdown 文件分组
@@ -113,7 +113,9 @@ class ImageLogManager {
             : this.formatSize(entry.finalSize);
           lines.push(`  ✅ ${entry.localPath}`);
           lines.push(`     原始: ${entry.originalUrl}`);
-          lines.push(`     大小: ${sizeInfo}${entry.compressed ? " (已压缩)" : ""}`);
+          lines.push(
+            `     大小: ${sizeInfo}${entry.compressed ? " (已压缩)" : ""}`,
+          );
         } else {
           lines.push(`  ❌ 失败`);
           lines.push(`     原始: ${entry.originalUrl}`);
@@ -124,8 +126,12 @@ class ImageLogManager {
     }
 
     // 统计信息
-    const successCount = this.entries.filter((e) => e.status === "success").length;
-    const failedCount = this.entries.filter((e) => e.status === "failed").length;
+    const successCount = this.entries.filter(
+      (e) => e.status === "success",
+    ).length;
+    const failedCount = this.entries.filter(
+      (e) => e.status === "failed",
+    ).length;
     const compressedCount = this.entries.filter((e) => e.compressed).length;
 
     lines.push("=".repeat(60));

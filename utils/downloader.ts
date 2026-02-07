@@ -4,14 +4,14 @@ import * as path from "path"; // node内置的路径模块
 import fs from "fs-extra"; // 扩展的fs模块
 import axios from "axios"; // 网络请求模块
 import type { Image } from "mdast";
-import { compressImage } from "./imageCompression.ts";
+import { compressImage } from "./imageCompression";
 import {
   downloadSemaphore,
   LARGE_IMAGE_THRESHOLD,
   TOTAL_PERMITS,
-} from "./Semaphore.ts";
-import { downloadProgress } from "./downloadProgress.ts";
-import { imageLog } from "./imageLog.ts";
+} from "./Semaphore";
+import { downloadProgress } from "./downloadProgress";
+import { imageLog } from "./imageLog";
 
 // 类型映射
 const mimeMap: Record<string, string> = {

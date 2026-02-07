@@ -5,9 +5,9 @@ import { visit } from "unist-util-visit";
 import fs from "fs-extra";
 import path from "path";
 // 并发控制已移至 downloader.ts 中使用 Semaphore 实现
-import { downloadAndLocalize } from "./downloader.ts";
-import { downloadProgress } from "./downloadProgress.ts";
-import { imageLog } from "./imageLog.ts";
+import { downloadAndLocalize } from "./downloader";
+import { downloadProgress } from "./downloadProgress";
+import { imageLog } from "./imageLog";
 
 export async function processSingleMarkdown(srcPath: string, distPath: string) {
   // 设置当前处理的 Markdown 文件名（用于日志记录）

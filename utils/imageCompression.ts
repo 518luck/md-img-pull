@@ -1,6 +1,6 @@
 import sharp from "sharp";
 import ora, { type Ora } from "ora";
-import { downloadProgress } from "./downloadProgress.ts";
+import { downloadProgress } from "./downloadProgress";
 
 /**
  * 📦 ora 库说明
