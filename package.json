@@ -3,13 +3,19 @@
   "version": "1.0.0",
   "description": "Markdown 媒体资源本地化与压缩工具",
   "main": "./dist/main.cjs",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/518luck/md-img-pull.git"
+  },
+  "homepage": "https://github.com/518luck/md-img-pull#readme",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "bin": {
     "md-img-p": "./dist/main.cjs"
   },
   "type": "module",
-  "publishConfig": {
-    "access": "public"
-  },
   "files": [
     "dist"
   ],
