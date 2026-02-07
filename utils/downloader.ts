@@ -10,6 +10,7 @@ import {
   LARGE_IMAGE_THRESHOLD,
   TOTAL_PERMITS,
 } from "./Semaphore.ts";
+import { downloadProgress } from "./downloadProgress.ts";
 
 // 类型映射
 const mimeMap: Record<string, string> = {
@@ -61,13 +62,9 @@ export async function downloadAndLocalize(node: Image, assetDir: string) {
     if (imageData.length > MAX_SIZE && contentType !== "image/svg+xml") {
       // 如果是超大图（>20MB），需要独占所有槽位
       if (imageData.length > LARGE_IMAGE_THRESHOLD) {
-        console.log(
-          `检测到超大图 (${(imageData.length / 1024 / 1024).toFixed(2)}MB)，等待独占模式...`,
-        );
         // 额外获取 4 个槽位（已有 1 个，总共 5 个 = 独占）
         await downloadSemaphore.acquire(TOTAL_PERMITS - 1);
         heldPermits = TOTAL_PERMITS; // 现在持有 5 个槽位
-        console.log(`🔓 已获取独占模式，开始压缩超大图...`);
       }
 
       imageData = await compressImage(imageData);
@@ -84,13 +81,17 @@ export async function downloadAndLocalize(node: Image, assetDir: string) {
     // 5. 如果文件不存在则下载
     if (!(await fs.pathExists(localPath))) {
       await fs.writeFile(localPath, imageData);
-      console.log(`已下载: ${fileName}`);
     }
 
-    // 6. 修改 AST 节点的 URL 为相对路径
+    // 6. 更新进度（使用 spinner 而不是 console.log）
+    downloadProgress.complete(fileName);
+
+    // 7. 修改 AST 节点的 URL 为相对路径
     node.url = `./assets/${fileName}`;
   } catch (err) {
-    console.error(`下载失败: ${node.url}`, err);
+    // 下载失败时也要更新进度
+    downloadProgress.fail(node.url);
+    // 不再打印错误，让 spinner 统一显示
   } finally {
     // 🔑 无论成功还是失败，都要释放持有的槽位
     downloadSemaphore.release(heldPermits);

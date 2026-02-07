@@ -28,7 +28,6 @@ async function runBatch() {
     );
     // 定义目标文件夹（在同级目录下生成 path_localized）
     const distAbsPath = `${srcAbsPath}_localized`;
-    console.log("🚀 ~ runBatch ~ distAbsPath:", distAbsPath);
 
     if (await fs.pathExists(distAbsPath)) {
       log(
