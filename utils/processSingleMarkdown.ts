@@ -4,11 +4,8 @@ import remarkStringify from "remark-stringify";
 import { visit } from "unist-util-visit";
 import fs from "fs-extra";
 import path from "path";
-import pLimit from "p-limit"; // 限制并发数插件
+// 并发控制已移至 downloader.ts 中使用 Semaphore 实现
 import { downloadAndLocalize } from "./downloader.ts";
-
-// 创建一个limit实例, 每个任务最多并发执行 5 个
-const limit = pLimit(5);
 
 export async function processSingleMarkdown(srcPath: string, distPath: string) {
   // 1. 读取 Markdown 文件内容
@@ -41,12 +38,10 @@ export async function processSingleMarkdown(srcPath: string, distPath: string) {
         // }
         // startsWith 判断一个字符串是否是以指定的字符开头的 只处理网络上的图片，放过本地已经存在的图片 防止重复处理已经本地化的图片
         if (node.url.startsWith("http")) {
-          // limit实例参数 1.fn limit把这个函数放到队列中 等待执行 2. ...args 传递给函数的参数
-          const downloadTask = limit(() =>
-            // 这个地方的限制锁是限制一个markdown文件当中只能有5个下载任务
-            //这个地方传入node对象,node.url是普通的值,值传递会把地址拷贝过去,不会改变原对象
-            downloadAndLocalize(node, targetAssetDir),
-          );
+          // 并发控制已移至 downloadAndLocalize 内部，使用 Semaphore 实现
+          // 普通图片：占用 1 个槽位，最多 5 个并发
+          // 超大图片（>20MB）：独占所有 5 个槽位，串行处理
+          const downloadTask = downloadAndLocalize(node, targetAssetDir);
           promises.push(downloadTask);
         }
       });

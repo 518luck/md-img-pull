@@ -5,6 +5,11 @@ import fs from "fs-extra"; // 扩展的fs模块
 import axios from "axios"; // 网络请求模块
 import type { Image } from "mdast";
 import { compressImage } from "./imageCompression.ts";
+import {
+  downloadSemaphore,
+  LARGE_IMAGE_THRESHOLD,
+  TOTAL_PERMITS,
+} from "./Semaphore.ts";
 
 // 类型映射
 const mimeMap: Record<string, string> = {
@@ -17,6 +22,11 @@ const mimeMap: Record<string, string> = {
 export async function downloadAndLocalize(node: Image, assetDir: string) {
   const currentUrl = node.url;
   if (!currentUrl) return;
+
+  // 先获取 1 个槽位（普通并发）
+  await downloadSemaphore.acquire(1);
+  // 记录当前持有的槽位数，用于最后释放
+  let heldPermits = 1;
 
   try {
     // 1. 生成基于 URL 的 MD5 文件名，防止重复
@@ -46,7 +56,20 @@ export async function downloadAndLocalize(node: Image, assetDir: string) {
     // Buffer.from() 的作用是将这些不同格式的二进制数据统一包装成 Node.js 的 Buffer 对象。
     let imageData = Buffer.from(response.data);
     const MAX_SIZE = 10 * 1024 * 1024;
+
+    // 🔑 关键逻辑：检测到大图时，获取额外槽位实现"独占"
     if (imageData.length > MAX_SIZE && contentType !== "image/svg+xml") {
+      // 如果是超大图（>20MB），需要独占所有槽位
+      if (imageData.length > LARGE_IMAGE_THRESHOLD) {
+        console.log(
+          `🔒 检测到超大图 (${(imageData.length / 1024 / 1024).toFixed(2)}MB)，等待独占模式...`,
+        );
+        // 额外获取 4 个槽位（已有 1 个，总共 5 个 = 独占）
+        await downloadSemaphore.acquire(TOTAL_PERMITS - 1);
+        heldPermits = TOTAL_PERMITS; // 现在持有 5 个槽位
+        console.log(`🔓 已获取独占模式，开始压缩超大图...`);
+      }
+
       imageData = await compressImage(imageData);
     }
     if (imageData.length !== response.data.byteLength) {
@@ -68,5 +91,8 @@ export async function downloadAndLocalize(node: Image, assetDir: string) {
     node.url = `./assets/${fileName}`;
   } catch (err) {
     console.error(`下载失败: ${node.url}`, err);
+  } finally {
+    // 🔑 无论成功还是失败，都要释放持有的槽位
+    downloadSemaphore.release(heldPermits);
   }
 }
