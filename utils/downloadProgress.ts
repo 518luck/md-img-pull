@@ -16,6 +16,7 @@ class DownloadProgressManager {
   private totalCount = 0; // 总图片数
   private completedCount = 0; // 已完成数
   private currentFile = ""; // 当前正在处理的文件
+  private isPaused = false; // 是否暂停（用于压缩时暂停下载 spinner）
 
   /**
    * 开始下载任务
@@ -25,6 +26,7 @@ class DownloadProgressManager {
     this.totalCount = total;
     this.completedCount = 0;
     this.currentFile = "";
+    this.isPaused = false;
 
     if (total === 0) return;
 
@@ -40,7 +42,7 @@ class DownloadProgressManager {
    */
   updateCurrent(fileName: string): void {
     this.currentFile = fileName;
-    if (this.spinner) {
+    if (this.spinner && !this.isPaused) {
       this.spinner.text = this.formatText();
     }
   }
@@ -51,7 +53,7 @@ class DownloadProgressManager {
   complete(fileName: string): void {
     this.completedCount++;
     this.currentFile = fileName;
-    if (this.spinner) {
+    if (this.spinner && !this.isPaused) {
       this.spinner.text = this.formatText();
     }
   }
@@ -62,8 +64,29 @@ class DownloadProgressManager {
   fail(fileName: string): void {
     // 失败也算完成（只是失败了）
     this.completedCount++;
-    if (this.spinner) {
+    if (this.spinner && !this.isPaused) {
       this.spinner.text = this.formatText();
+    }
+  }
+
+  /**
+   * 暂停 spinner（用于压缩时避免干扰）
+   */
+  pause(): void {
+    if (this.spinner && !this.isPaused) {
+      this.spinner.stop();
+      this.isPaused = true;
+    }
+  }
+
+  /**
+   * 恢复 spinner
+   */
+  resume(): void {
+    if (this.spinner && this.isPaused) {
+      this.spinner.start();
+      this.spinner.text = this.formatText();
+      this.isPaused = false;
     }
   }
 

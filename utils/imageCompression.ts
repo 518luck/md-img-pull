@@ -1,5 +1,6 @@
 import sharp from "sharp";
 import ora from "ora";
+import { downloadProgress } from "./downloadProgress.ts";
 
 /**
  * 📦 ora 库说明
@@ -34,6 +35,9 @@ export async function compressImage(inputBuffer: Buffer): Promise<Buffer> {
   }
 
   const originalSize = (inputBuffer.length / 1024 / 1024).toFixed(2);
+
+  // 🔑 暂停下载 spinner，避免两个 spinner 互相干扰
+  downloadProgress.pause();
 
   // 创建 spinner 实例
   const spinner = ora({
@@ -71,5 +75,8 @@ export async function compressImage(inputBuffer: Buffer): Promise<Buffer> {
   } catch (error) {
     spinner.fail(`压缩失败: ${error}`);
     throw error;
+  } finally {
+    // 🔑 无论成功还是失败，都要恢复下载 spinner
+    downloadProgress.resume();
   }
 }
