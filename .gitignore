@@ -1,0 +1,6 @@
+node_modules/
+dist/
+.DS_Store
+*.log
+# 如果你是用 TS 编译的，可能还有这个
+out/

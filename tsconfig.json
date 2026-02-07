@@ -1,0 +1,69 @@
+{
+  "compilerOptions": {
+    /* --- 运行环境设置 --- */
+    "module": "ESNext",
+    // 使用最新的 JavaScript 模块标准（支持顶级 await、动态 import 等）。
+
+    "target": "esnext",
+    // 编译出的代码目标版本。设为 esnext 意味着不进行降级转换，充分利用 Node 25 的原生性能。
+
+    "types": [],
+    // 指定加载的类型定义。设为空数组意味着“不自动引入”任何全局类型，避免全局变量污染（建议改为 ["node"]）。
+
+    /* --- 解析与导入策略 --- */
+    "moduleResolution": "bundler",
+    // 采用“打包工具”解析模式。这是目前最智能的模式，允许你不带后缀或者带 .ts 后缀导入文件。
+
+    "allowImportingTsExtensions": true,
+    // 核心开关：允许你在 import 语句中显式书写 ".ts" 扩展名。
+
+    "noEmit": true,
+    // 关键配置：告诉 TS 不要生成 .js 文件。因为你直接用 Node 运行 .ts，不需要多余的编译产物。
+
+    "esModuleInterop": true,
+    // 兼容开关：允许像 import fs from 'fs' 这样引入那些老旧的 CommonJS 模块。
+
+    /* --- 输出质量与调试 --- */
+    "sourceMap": true,
+    // 生成源代码映射文件，方便在报错时精确定位到 .ts 源码的行数，而不是混淆后的代码。
+
+    "declaration": true,
+    // 允许生成 .d.ts 类型定义文件（虽然开启 noEmit 后不生成，但保留此项有利于 IDE 识别）。
+
+    "declarationMap": true,
+    // 为类型定义生成映射，点击“跳转到定义”时能直接跳到 .ts 源码而非 .d.ts。
+
+    /* --- 严格类型检查 (Stricter Options) --- */
+    "strict": true,
+    // 开启全套严格检查。包括空值检查、this 指向检查等，是 TypeScript 的灵魂。
+
+    "noUncheckedIndexedAccess": true,
+    // 极其严格：当你访问 obj[key] 时，强制提醒你该 key 可能不存在（返回 undefined）。
+
+    "exactOptionalPropertyTypes": true,
+    // 严格处理可选属性：不允许将可选属性显式设置为 undefined，必须要么有值，要么完全没有这个 key。
+
+    /* --- 现代 ESM 适配 --- */
+    "verbatimModuleSyntax": true,
+    // 强制要求显式使用 import type。这能确保在剥离类型后，不会留下多余的 import 语句，对原生 ESM 极其友好。
+
+    "isolatedModules": true,
+    // 确保每个文件都能独立安全地编译。这是为了适配 SWC 或 Node 原生类型剥离器的必要条件。
+
+    "noUncheckedSideEffectImports": true,
+    // 检查副作用导入：如果你 import "style.css" 但文件不存在，TS 会报错。
+
+    "moduleDetection": "force",
+    // 强制 TS 将所有文件视为模块。防止因文件内没写 import/export 而被误认为全局脚本。
+
+    /* --- 性能与稳定性 --- */
+    "jsx": "react-jsx",
+    // 支持 JSX 语法。如果你不写前端可以无视，但留着不报错，适配 React 17+ 的自动转换。
+
+    "skipLibCheck": true,
+    // 跳过 node_modules 里库文件的类型检查。极大缩短编译时间，防止第三方库的类型错误导致你报错。
+
+    "forceConsistentCasingInFileNames": true
+    // 强制文件名大小写一致。防止在 Windows（大小写不敏感）写完代码，到 Linux（敏感）上拉取失败。
+  }
+}
