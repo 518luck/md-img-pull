@@ -1,4 +1,18 @@
 import sharp from "sharp";
+import ora from "ora";
+
+/**
+ * 📦 ora 库说明
+ * ora = 一个优雅的终端 spinner（旋转动画）库
+ * 名字来源：拉丁语，意为"祈祷"（等待时的祈祷 🙏）
+ *
+ * 常用 API：
+ * - ora("文字").start()  → 开始显示 spinner
+ * - spinner.text = "新文字"  → 更新显示文字
+ * - spinner.succeed("成功")  → 显示 ✔ 并停止
+ * - spinner.fail("失败")     → 显示 ✖ 并停止
+ * - spinner.stop()           → 静默停止
+ */
 
 // 压缩图片函数：尽可能保留画质，同时确保体积在 10MB 以内
 export async function compressImage(inputBuffer: Buffer): Promise<Buffer> {
@@ -13,33 +27,43 @@ export async function compressImage(inputBuffer: Buffer): Promise<Buffer> {
     return inputBuffer;
   }
 
-  console.log(
-    `⚖️ 处理大图 (${(meta.size! / 1024 / 1024).toFixed(2)}MB)，格式: ${meta.format}`,
-  );
+  const originalSize = (inputBuffer.length / 1024 / 1024).toFixed(2);
 
-  // 统一转 WebP (保持动画)
-  let currentBuffer = await image.webp({ quality: 80, effort: 6 }).toBuffer();
+  // 创建 spinner 实例
+  const spinner = ora({
+    text: `压缩中: ${originalSize}MB → 转换为 WebP...`,
+    // spinner 动画类型，可选值很多，如 'dots', 'line', 'arc', 'bouncingBar' 等
+    spinner: "dots",
+    color: "yellow",
+  }).start();
 
-  // --- 策略 1: 如果还是太大，缩小分辨率 ---
-  // 很多 50MB 的图是因为分辨率达到了 8K，其实网页显示只需要 2K 左右
-  if (currentBuffer.length > MAX_SIZE) {
-    console.log("⚠️ WebP 转换后仍超标，开始缩小分辨率...");
-    currentBuffer = await sharp(inputBuffer, { animated: true })
-      .resize(2560, undefined, { withoutEnlargement: true }) // 限制最大宽度 2560px
-      .webp({ quality: 75 })
-      .toBuffer();
+  try {
+    // 统一转 WebP (保持动画)
+    let currentBuffer = await image.webp({ quality: 80, effort: 6 }).toBuffer();
+
+    // --- 策略 1: 如果还是太大，缩小分辨率 ---
+    if (currentBuffer.length > MAX_SIZE) {
+      spinner.text = `压缩中: ${originalSize}MB → 缩小分辨率至 2560px...`;
+      currentBuffer = await sharp(inputBuffer, { animated: true })
+        .resize(2560, undefined, { withoutEnlargement: true })
+        .webp({ quality: 75 })
+        .toBuffer();
+    }
+
+    // --- 策略 2: 极限压缩 (保底) ---
+    if (currentBuffer.length > MAX_SIZE) {
+      spinner.text = `压缩中: ${originalSize}MB → 极限压缩 (quality: 60)...`;
+      currentBuffer = await sharp(currentBuffer, { animated: true })
+        .webp({ quality: 60 })
+        .toBuffer();
+    }
+
+    const finalSize = (currentBuffer.length / 1024 / 1024).toFixed(2);
+    spinner.succeed(`压缩完成: ${originalSize}MB → ${finalSize}MB`);
+
+    return currentBuffer;
+  } catch (error) {
+    spinner.fail(`压缩失败: ${error}`);
+    throw error;
   }
-
-  // --- 策略 3: 极限压缩 (保底) ---
-  if (currentBuffer.length > MAX_SIZE) {
-    console.log("🚨 极端大图，进行强力质量压缩...");
-    currentBuffer = await sharp(currentBuffer, { animated: true })
-      .webp({ quality: 60 }) // 50-60 是画质可接受的底线
-      .toBuffer();
-  }
-
-  console.log(
-    `✨ 压缩完成: ${(currentBuffer.length / 1024 / 1024).toFixed(2)}MB`,
-  );
-  return currentBuffer;
 }
