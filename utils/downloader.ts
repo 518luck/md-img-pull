@@ -62,7 +62,7 @@ export async function downloadAndLocalize(node: Image, assetDir: string) {
       // 如果是超大图（>20MB），需要独占所有槽位
       if (imageData.length > LARGE_IMAGE_THRESHOLD) {
         console.log(
-          `🔒 检测到超大图 (${(imageData.length / 1024 / 1024).toFixed(2)}MB)，等待独占模式...`,
+          `检测到超大图 (${(imageData.length / 1024 / 1024).toFixed(2)}MB)，等待独占模式...`,
         );
         // 额外获取 4 个槽位（已有 1 个，总共 5 个 = 独占）
         await downloadSemaphore.acquire(TOTAL_PERMITS - 1);

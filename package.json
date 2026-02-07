@@ -20,6 +20,7 @@
   "dependencies": {
     "@types/mdast": "^4.0.4",
     "axios": "^1.13.4",
+    "chalk": "^5.6.2",
     "crypto": "^1.0.1",
     "fs-extra": "^11.3.3",
     "ora": "^9.3.0",
