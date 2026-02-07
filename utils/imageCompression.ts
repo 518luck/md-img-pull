@@ -1,5 +1,5 @@
 import sharp from "sharp";
-import ora from "ora";
+import ora, { type Ora } from "ora";
 import { downloadProgress } from "./downloadProgress.ts";
 
 /**
@@ -21,6 +21,72 @@ const SHARP_OPTIONS = {
   limitInputPixels: false,
   sequentialRead: true,
 };
+
+/**
+ * 动态省略号动画类
+ *
+ * 📝 作用：让文字末尾的 "..." 动态变化
+ * 效果：.  →  ..  →  ...  →  ..  →  .  →  ..  → ...
+ */
+class DynamicDots {
+  private timer: ReturnType<typeof setInterval> | null = null;
+  private dots = "";
+  private direction = 1; // 1 = 增加, -1 = 减少
+  private spinner: Ora;
+  private baseText: string;
+
+  constructor(spinner: Ora, baseText: string) {
+    this.spinner = spinner;
+    this.baseText = baseText;
+  }
+
+  /**
+   * 开始动画
+   * @param interval 更新间隔（毫秒），默认 300ms
+   */
+  start(interval = 300): void {
+    this.updateText();
+    this.timer = setInterval(() => {
+      // 更新点的数量
+      if (this.direction === 1) {
+        this.dots += ".";
+        if (this.dots.length >= 3) this.direction = -1;
+      } else {
+        this.dots = this.dots.slice(0, -1);
+        if (this.dots.length <= 0) this.direction = 1;
+      }
+      this.updateText();
+    }, interval);
+  }
+
+  /**
+   * 更新显示文字
+   */
+  private updateText(): void {
+    // 用空格补齐，保持文字长度一致，避免闪烁
+    const paddedDots = this.dots.padEnd(3, " ");
+    this.spinner.text = `${this.baseText}${paddedDots}`;
+  }
+
+  /**
+   * 更新基础文字（不包含省略号）
+   */
+  setBaseText(text: string): void {
+    this.baseText = text;
+    this.updateText();
+  }
+
+  /**
+   * 停止动画
+   */
+  stop(): void {
+    if (this.timer) {
+      clearInterval(this.timer);
+      this.timer = null;
+    }
+  }
+}
+
 // 压缩图片函数：尽可能保留画质，同时确保体积在 10MB 以内
 export async function compressImage(inputBuffer: Buffer): Promise<Buffer> {
   const MAX_SIZE = 10 * 1024 * 1024; // 10MB
@@ -41,11 +107,17 @@ export async function compressImage(inputBuffer: Buffer): Promise<Buffer> {
 
   // 创建 spinner 实例
   const spinner = ora({
-    text: `压缩中: ${originalSize}MB → 转换为 WebP...`,
-    // spinner 动画类型，可选值很多，如 'dots', 'line', 'arc', 'bouncingBar' 等
+    text: `压缩中: ${originalSize}MB → 转换为 WebP`,
     spinner: "dots",
     color: "yellow",
   }).start();
+
+  // 创建动态省略号动画
+  const dynamicDots = new DynamicDots(
+    spinner,
+    `压缩中: ${originalSize}MB → 转换为 WebP`,
+  );
+  dynamicDots.start(300); // 每 300ms 更新一次
 
   try {
     // 统一转 WebP (保持动画)
@@ -53,7 +125,9 @@ export async function compressImage(inputBuffer: Buffer): Promise<Buffer> {
 
     // --- 策略 1: 如果还是太大，缩小分辨率 ---
     if (currentBuffer.length > MAX_SIZE) {
-      spinner.text = `压缩中: ${originalSize}MB → 缩小分辨率至 2560px...`;
+      dynamicDots.setBaseText(
+        `压缩中: ${originalSize}MB → 缩小分辨率至 2560px`,
+      );
       currentBuffer = await sharp(inputBuffer, SHARP_OPTIONS)
         .resize(2560, undefined, { withoutEnlargement: true })
         .webp({ quality: 75 })
@@ -62,17 +136,23 @@ export async function compressImage(inputBuffer: Buffer): Promise<Buffer> {
 
     // --- 策略 2: 极限压缩 (保底) ---
     if (currentBuffer.length > MAX_SIZE) {
-      spinner.text = `压缩中: ${originalSize}MB → 极限压缩 (quality: 60)...`;
+      dynamicDots.setBaseText(
+        `压缩中: ${originalSize}MB → 极限压缩 (quality: 60)`,
+      );
       currentBuffer = await sharp(currentBuffer, SHARP_OPTIONS)
         .webp({ quality: 60 })
         .toBuffer();
     }
+
+    // 停止动态省略号
+    dynamicDots.stop();
 
     const finalSize = (currentBuffer.length / 1024 / 1024).toFixed(2);
     spinner.succeed(`压缩完成: ${originalSize}MB → ${finalSize}MB`);
 
     return currentBuffer;
   } catch (error) {
+    dynamicDots.stop();
     spinner.fail(`压缩失败: ${error}`);
     throw error;
   } finally {

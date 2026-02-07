@@ -91,7 +91,9 @@ export async function downloadAndLocalize(node: Image, assetDir: string) {
   } catch (err) {
     // 下载失败时也要更新进度
     downloadProgress.fail(node.url);
-    // 不再打印错误，让 spinner 统一显示
+    // 打印错误信息，方便调试
+    console.error(`\n❌ 处理失败: ${node.url}`);
+    console.error(`   错误详情: ${err}`);
   } finally {
     // 🔑 无论成功还是失败，都要释放持有的槽位
     downloadSemaphore.release(heldPermits);
