@@ -59,7 +59,7 @@ export async function downloadAndLocalize(node: Image, assetDir: string) {
     let imageData = Buffer.from(response.data);
     const MAX_SIZE = 10 * 1024 * 1024;
 
-    // 🔑 关键逻辑：检测到大图时，获取额外槽位实现"独占"
+    // [关键逻辑] 检测到大图时，获取额外槽位实现"独占"
     if (imageData.length > MAX_SIZE && contentType !== "image/svg+xml") {
       // 如果是超大图（>20MB），需要独占所有槽位
       if (imageData.length > LARGE_IMAGE_THRESHOLD) {
@@ -102,13 +102,10 @@ export async function downloadAndLocalize(node: Image, assetDir: string) {
   } catch (err) {
     // 下载失败时也要更新进度
     downloadProgress.fail(node.url);
-    // 记录失败日志
+    // 记录失败日志（错误信息会保存到日志文件）
     imageLog.addFailed(node.url, String(err));
-    // 打印错误信息，方便调试
-    console.error(`\n❌ 处理失败: ${node.url}`);
-    console.error(`   错误详情: ${err}`);
   } finally {
-    // 🔑 无论成功还是失败，都要释放持有的槽位
+    // [关键] 无论成功还是失败，都要释放持有的槽位
     downloadSemaphore.release(heldPermits);
   }
 }
