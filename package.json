@@ -1,10 +1,20 @@
 {
   "name": "md-img-pull",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Markdown 媒体资源本地化与压缩工具",
+  "main": "./dist/main.cjs",
+  "bin": {
+    "md-img-p": "./dist/main.cjs"
+  },
   "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
+    "build": "esbuild main.ts --bundle --platform=node --format=cjs --outfile=dist/main.cjs --external:sharp --banner:js=\"#!/usr/bin/env node\"",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -14,6 +24,7 @@
   "devDependencies": {
     "@types/fs-extra": "^11.0.4",
     "@types/node": "^25.2.1",
+    "esbuild": "^0.27.3",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   },
