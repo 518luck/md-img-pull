@@ -5,6 +5,7 @@ import * as readline from "node:readline/promises"; // 用于从命令行读取�
 import fs from "fs-extra"; // 用于文件操作，如检查路径是否存在
 import { stdin as input, stdout as output } from "node:process"; // 用于从命令行读取输入和输出
 import chalk from "chalk";
+import { imageLog } from "./utils/imageLog.ts";
 const log = console.log;
 
 async function runBatch() {
@@ -78,6 +79,10 @@ async function runBatch() {
       // 执行核心本地化逻辑
       await processSingleMarkdown(mdFile, targetMdPath);
     }
+
+    // 保存日志文件到输出目录
+    await imageLog.saveToFile(distAbsPath);
+
     log(chalk.green.bold(`\n全部处理完成！`));
     log(chalk.green(`结果已保存至: `) + chalk.underline.white(distAbsPath));
   } catch (error) {

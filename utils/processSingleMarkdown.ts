@@ -7,8 +7,12 @@ import path from "path";
 // 并发控制已移至 downloader.ts 中使用 Semaphore 实现
 import { downloadAndLocalize } from "./downloader.ts";
 import { downloadProgress } from "./downloadProgress.ts";
+import { imageLog } from "./imageLog.ts";
 
 export async function processSingleMarkdown(srcPath: string, distPath: string) {
+  // 设置当前处理的 Markdown 文件名（用于日志记录）
+  imageLog.setCurrentFile(path.basename(srcPath));
+
   // 1. 读取 Markdown 文件内容
   const content = await fs.readFile(srcPath, "utf-8");
   // 2. 确定新文件夹中的 assets 目录  1. dirname:(去尾留头) 比如 D:/Backup/Work/notes.md => D:/Backup/Work

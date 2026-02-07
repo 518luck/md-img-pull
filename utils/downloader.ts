@@ -11,6 +11,7 @@ import {
   TOTAL_PERMITS,
 } from "./Semaphore.ts";
 import { downloadProgress } from "./downloadProgress.ts";
+import { imageLog } from "./imageLog.ts";
 
 // 类型映射
 const mimeMap: Record<string, string> = {
@@ -86,11 +87,23 @@ export async function downloadAndLocalize(node: Image, assetDir: string) {
     // 6. 更新进度（使用 spinner 而不是 console.log）
     downloadProgress.complete(fileName);
 
-    // 7. 修改 AST 节点的 URL 为相对路径
+    // 7. 记录日志
+    const originalSize = response.data.byteLength;
+    const finalSize = imageData.length;
+    imageLog.addSuccess(
+      currentUrl,
+      `./assets/${fileName}`,
+      originalSize,
+      finalSize,
+    );
+
+    // 8. 修改 AST 节点的 URL 为相对路径
     node.url = `./assets/${fileName}`;
   } catch (err) {
     // 下载失败时也要更新进度
     downloadProgress.fail(node.url);
+    // 记录失败日志
+    imageLog.addFailed(node.url, String(err));
     // 打印错误信息，方便调试
     console.error(`\n❌ 处理失败: ${node.url}`);
     console.error(`   错误详情: ${err}`);
