@@ -62,29 +62,58 @@ async function runBatch() {
     }
 
     log(`${chalk.blue.bold("▶ 原目录: ")} ${chalk.gray(srcAbsPath)}`);
-    log(`${chalk.blue.bold("▶ 目标目录:")} ${chalk.gray(distAbsPath)}\n`);
 
-    // 3. 递归获取所有 Markdown 文件
-    const allFiles = await getFilesRecursive(srcAbsPath);
-    // 4. 筛选出所有 Markdown 文件
-    const mdFiles = allFiles.filter((f) => f.endsWith(".md"));
+    const stats = await fs.stat(srcAbsPath);
+    let mdFiles: string[] = [];
+    let finalDistAbsPath = distAbsPath;
+    // 2. 判断输入类型
+    if (stats.isFile()) {
+      // 如果是文件，直接放入数组（前提是 .md）
+      if (srcAbsPath.endsWith(".md")) {
+        mdFiles = [srcAbsPath];
+        const fileName = path.basename(srcAbsPath, ".md");
+        finalDistAbsPath = path.join(
+          path.dirname(srcAbsPath),
+          `${fileName}_localized`,
+        );
+      } else {
+        log(chalk.red.bold("\n错误：所选文件不是 Markdown 格式！"));
+        return;
+      }
+    } else {
+      // 如果是文件夹，调用你写的递归函数
+      const allFiles = await getFilesRecursive(srcAbsPath);
+      mdFiles = allFiles.filter((f) => f.endsWith(".md"));
+    }
+
+    // 更新一下 log 里的目标目录显示
+    log(`${chalk.blue.bold("▶ 目标目录:")} ${chalk.gray(finalDistAbsPath)}\n`);
 
     for (const mdFile of mdFiles) {
       // 计算相对路径，以便在目标目录维持相同的层级结构
       // 提取特征 srcAbsPath: C:/Users/Documents/Notes mdFile: C:/Users/Documents/Notes/编程/TS/基础.md
       // 结果: 编程/TS/基础.md
-      const relativePath = path.relative(srcAbsPath, mdFile);
-      const targetMdPath = path.join(distAbsPath, relativePath);
+      let relativePath = "";
+
+      if (stats.isFile()) {
+        // 【核心修改 2】单文件模式下，直接使用文件名作为相对路径
+        relativePath = path.basename(mdFile);
+      } else {
+        // 文件夹模式保持不变
+        relativePath = path.relative(srcAbsPath, mdFile);
+      }
+
+      const targetMdPath = path.join(finalDistAbsPath, relativePath);
 
       // 执行核心本地化逻辑
       await processSingleMarkdown(mdFile, targetMdPath);
     }
 
     // 保存日志文件到输出目录
-    await imageLog.saveToFile(distAbsPath);
+    await imageLog.saveToFile(finalDistAbsPath);
 
     log(chalk.green.bold(`\n全部处理完成！`));
-    log(chalk.green(`结果已保存至: `) + chalk.underline.white(distAbsPath));
+    log(chalk.green(`结果已保存至: `) + chalk.underline.white(finalDistAbsPath));
   } catch (error) {
     log(chalk.bgRed.white.bold(" ERROR ") + "\n", error);
   } finally {
