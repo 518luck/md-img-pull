@@ -94,7 +94,7 @@ class DynamicDots {
 export async function convertToWebp(inputBuffer: Buffer): Promise<Buffer> {
   const image = sharp(inputBuffer, SHARP_OPTIONS);
   // 使用高质量设置转换为 WebP，保持原始效果
-  return await image.webp({ quality: 90, effort: 6 }).toBuffer();
+  return await image.webp({ quality: 80, effort: 6 }).toBuffer();
 }
 
 // 压缩图片函数：尽可能保留画质，同时确保体积在 10MB 以内
