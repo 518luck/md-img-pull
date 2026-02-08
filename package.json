@@ -1,6 +1,6 @@
 {
   "name": "@duoyun/md-img-pull",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Markdown 媒体资源本地化与压缩工具",
   "main": "./dist/main.cjs",
   "repository": {
