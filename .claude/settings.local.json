@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(pnpm add ora)"
+      "Bash(pnpm add ora)",
+      "Bash(npx tsc --noEmit)"
     ]
   }
 }

@@ -25,10 +25,25 @@ export async function downloadAndLocalize(node: Image, assetDir: string) {
   const currentUrl = node.url;
   if (!currentUrl) return;
 
-  // 先获取 1 个槽位（普通并发）
-  await downloadSemaphore.acquire(1);
-  // 记录当前持有的槽位数，用于最后释放
-  let heldPermits = 1;
+  // 预判图片大小，决定需要获取多少槽位（避免死锁）
+  let requiredPermits = 1;
+  try {
+    const headResponse = await axios.head(currentUrl, { timeout: 5000 });
+    const contentLength = parseInt(
+      headResponse.headers["content-length"] || "0",
+      10,
+    );
+    // 如果预判是超大图（>20MB），直接获取所有槽位
+    if (contentLength > LARGE_IMAGE_THRESHOLD) {
+      requiredPermits = TOTAL_PERMITS;
+    }
+  } catch {
+    // HEAD 请求失败时使用默认值 1，后续下载后再判断
+  }
+
+  // 一次性获取所需槽位（避免死锁）
+  await downloadSemaphore.acquire(requiredPermits);
+  let heldPermits = requiredPermits;
 
   try {
     // 1. 生成基于 URL 的 MD5 文件名，防止重复
@@ -38,10 +53,21 @@ export async function downloadAndLocalize(node: Image, assetDir: string) {
       .digest("hex"); // 生成十六进制字符串
 
     //2.发起网络请求获取图片内容
-    const response = await axios.get(currentUrl, {
-      responseType: "arraybuffer",
-      timeout: 10000,
-    });
+    // 使用 AbortController 实现整体请求超时（包括下载时间）
+    const controller = new AbortController();
+    const downloadTimeout = 60000; // 60 秒整体超时
+    const timeoutId = setTimeout(() => controller.abort(), downloadTimeout);
+
+    let response;
+    try {
+      response = await axios.get(currentUrl, {
+        responseType: "arraybuffer",
+        timeout: 10000, // 连接超时 10 秒
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     // 3.从响应头获取真实图片信息
     const contentType = response.headers["content-type"];
@@ -59,15 +85,8 @@ export async function downloadAndLocalize(node: Image, assetDir: string) {
     let imageData = Buffer.from(response.data);
     const MAX_SIZE = 10 * 1024 * 1024;
 
-    // [关键逻辑] 检测到大图时，获取额外槽位实现"独占"
+    // 需要压缩的情况：图片大于 10MB 且不是 SVG
     if (imageData.length > MAX_SIZE && contentType !== "image/svg+xml") {
-      // 如果是超大图（>20MB），需要独占所有槽位
-      if (imageData.length > LARGE_IMAGE_THRESHOLD) {
-        // 额外获取 4 个槽位（已有 1 个，总共 5 个 = 独占）
-        await downloadSemaphore.acquire(TOTAL_PERMITS - 1);
-        heldPermits = TOTAL_PERMITS; // 现在持有 5 个槽位
-      }
-
       imageData = await compressImage(imageData);
     }
     if (imageData.length !== response.data.byteLength) {
