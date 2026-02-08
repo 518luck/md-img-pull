@@ -87,6 +87,16 @@ class DynamicDots {
   }
 }
 
+/**
+ * 将图片转换为 WebP 格式（不压缩，保持原始质量）
+ * 用于小于 10MB 的图片，只做格式转换
+ */
+export async function convertToWebp(inputBuffer: Buffer): Promise<Buffer> {
+  const image = sharp(inputBuffer, SHARP_OPTIONS);
+  // 使用高质量设置转换为 WebP，保持原始效果
+  return await image.webp({ quality: 90, effort: 6 }).toBuffer();
+}
+
 // 压缩图片函数：尽可能保留画质，同时确保体积在 10MB 以内
 export async function compressImage(inputBuffer: Buffer): Promise<Buffer> {
   const MAX_SIZE = 10 * 1024 * 1024; // 10MB

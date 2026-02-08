@@ -4,7 +4,7 @@ import * as path from "path"; // node内置的路径模块
 import fs from "fs-extra"; // 扩展的fs模块
 import axios from "axios"; // 网络请求模块
 import type { Image } from "mdast";
-import { compressImage } from "./imageCompression";
+import { compressImage, convertToWebp } from "./imageCompression";
 import {
   downloadSemaphore,
   LARGE_IMAGE_THRESHOLD,
@@ -19,6 +19,7 @@ const mimeMap: Record<string, string> = {
   "image/png": ".png",
   "image/gif": ".gif",
   "image/svg+xml": ".svg",
+  "image/webp": ".webp",
 };
 
 export async function downloadAndLocalize(node: Image, assetDir: string) {
@@ -85,11 +86,15 @@ export async function downloadAndLocalize(node: Image, assetDir: string) {
     let imageData = Buffer.from(response.data);
     const MAX_SIZE = 10 * 1024 * 1024;
 
-    // 需要压缩的情况：图片大于 10MB 且不是 SVG
-    if (imageData.length > MAX_SIZE && contentType !== "image/svg+xml") {
-      imageData = await compressImage(imageData);
-    }
-    if (imageData.length !== response.data.byteLength) {
+    // 所有非 SVG 图片都转换为 webp 格式
+    if (contentType !== "image/svg+xml") {
+      if (imageData.length > MAX_SIZE) {
+        // 大于 10MB 的图片：压缩并转换为 webp
+        imageData = await compressImage(imageData);
+      } else {
+        // 小于等于 10MB 的图片：只转换格式为 webp，保持原始质量
+        imageData = await convertToWebp(imageData);
+      }
       finalExt = ".webp";
     }
 
