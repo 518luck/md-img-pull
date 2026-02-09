@@ -99,6 +99,9 @@ async function runBatch() {
       `part_${partitionIndex}`,
     );
 
+    // 设置初始分区信息
+    progressManager.setPartition(partitionIndex, currentPartitionPath);
+
     for (const mdFile of mdFiles) {
       // 计算相对路径，以便在目标目录维持相同的层级结构
       let relativePath = "";
@@ -117,7 +120,8 @@ async function runBatch() {
       // 执行核心本地化逻辑
       await processSingleMarkdown(mdFile, targetMdPath);
 
-      // 处理完一个 md 文件后，检查当前分区大小
+      // 处理完一个 md 文件后，更新分区大小并检查
+      await progressManager.updatePartitionSize();
       const currentPartitionSize = await getFolderSize(currentPartitionPath);
 
       // 如果当前分区超过 50MB，创建新分区（下一个文件会放到新分区）
@@ -127,6 +131,8 @@ async function runBatch() {
           finalDistAbsPath,
           `part_${partitionIndex}`,
         );
+        // 更新分区信息
+        progressManager.setPartition(partitionIndex, currentPartitionPath);
       }
     }
 

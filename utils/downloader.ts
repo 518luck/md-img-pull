@@ -90,6 +90,8 @@ export async function downloadAndLocalize(node: Image, assetDir: string) {
     if (contentType !== "image/svg+xml") {
       if (imageData.length > MAX_SIZE) {
         // 大于 10MB 的图片：压缩并转换为 webp
+        // 设置压缩状态
+        progressManager.startCompress();
         imageData = await compressImage(imageData);
         // 更新压缩计数
         progressManager.updateCompress();
