@@ -6,7 +6,11 @@ import fs from "fs-extra"; // 用于文件操作，如检查路径是否存在
 import { stdin as input, stdout as output } from "node:process"; // 用于从命令行读取输入和输出
 import chalk from "chalk";
 import { imageLog } from "./utils/imageLog";
+import { getFolderSize, formatSize } from "./utils/getFolderSize";
 const log = console.log;
+
+// 分区大小限制（50MB）
+const PARTITION_SIZE_LIMIT = 50 * 1024 * 1024;
 
 async function runBatch() {
   // 获取命令行参数。process.argv[0]是node程序，[1]是脚本文件，[2]才是你输入的路径
@@ -89,30 +93,60 @@ async function runBatch() {
     // 更新一下 log 里的目标目录显示
     log(`${chalk.blue.bold("▶ 目标目录:")} ${chalk.gray(finalDistAbsPath)}\n`);
 
+    // 分区计数器和当前分区路径
+    let partitionIndex = 1;
+    let currentPartitionPath = path.join(
+      finalDistAbsPath,
+      `part_${partitionIndex}`,
+    );
+
     for (const mdFile of mdFiles) {
       // 计算相对路径，以便在目标目录维持相同的层级结构
-      // 提取特征 srcAbsPath: C:/Users/Documents/Notes mdFile: C:/Users/Documents/Notes/编程/TS/基础.md
-      // 结果: 编程/TS/基础.md
       let relativePath = "";
 
       if (stats.isFile()) {
-        // 【核心修改 2】单文件模式下，直接使用文件名作为相对路径
+        // 单文件模式下，直接使用文件名作为相对路径
         relativePath = path.basename(mdFile);
       } else {
         // 文件夹模式保持不变
         relativePath = path.relative(srcAbsPath, mdFile);
       }
 
-      const targetMdPath = path.join(finalDistAbsPath, relativePath);
+      // 目标路径放在当前分区下
+      const targetMdPath = path.join(currentPartitionPath, relativePath);
 
       // 执行核心本地化逻辑
       await processSingleMarkdown(mdFile, targetMdPath);
+
+      // 处理完一个 md 文件后，检查当前分区大小
+      const currentPartitionSize = await getFolderSize(currentPartitionPath);
+
+      log(
+        chalk.gray(
+          `  当前分区 part_${partitionIndex} 大小: ${formatSize(currentPartitionSize)}`,
+        ),
+      );
+
+      // 如果当前分区超过 50MB，创建新分区（下一个文件会放到新分区）
+      if (currentPartitionSize >= PARTITION_SIZE_LIMIT) {
+        log(
+          chalk.yellow(
+            `\n分区 part_${partitionIndex} 已达到 ${formatSize(currentPartitionSize)}，创建新分区...`,
+          ),
+        );
+        partitionIndex++;
+        currentPartitionPath = path.join(
+          finalDistAbsPath,
+          `part_${partitionIndex}`,
+        );
+      }
     }
 
     // 保存日志文件到输出目录
     await imageLog.saveToFile(finalDistAbsPath);
 
     log(chalk.green.bold(`\n全部处理完成！`));
+    log(chalk.green(`共创建 ${partitionIndex} 个分区`));
     log(
       chalk.green(`结果已保存至: `) + chalk.underline.white(finalDistAbsPath),
     );
