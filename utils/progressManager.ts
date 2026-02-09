@@ -1,4 +1,5 @@
 import chalk from "chalk";
+import ora, { type Ora } from "ora";
 
 /**
  * 统一进度管理器
@@ -8,7 +9,7 @@ import chalk from "chalk";
  * ▶ 目标目录: c:\Users\zhang\Desktop\React通关秘籍_localized
  *
  * ████████████░░░░░░░░ 3/5 | 累计 1m47s
- * [当前] Hooks.md | 下载 8/12 | 压缩 2 | 23s
+ * ◐ Hooks.md | 下载 8/12 | 压缩 2 | 23s
  */
 class ProgressManager {
   private srcPath = "";
@@ -24,8 +25,10 @@ class ProgressManager {
   private downloadCompleted = 0;
   private compressedCount = 0;
 
-  // 控制台行数（用于清除）
-  private lastLineCount = 0;
+  // ora spinner 实例
+  private spinner: Ora | null = null;
+  // 定时器（用于实时更新时间）
+  private timer: ReturnType<typeof setInterval> | null = null;
 
   /**
    * 初始化进度管理器
@@ -36,7 +39,6 @@ class ProgressManager {
     this.totalFiles = totalFiles;
     this.completedFiles = 0;
     this.startTime = Date.now();
-    this.lastLineCount = 0;
 
     // 打印固定的头部信息
     console.log(chalk.blue.bold("▶ 原目录: ") + chalk.gray(this.srcPath));
@@ -53,7 +55,18 @@ class ProgressManager {
     this.downloadCompleted = 0;
     this.compressedCount = 0;
     this.fileStartTime = Date.now();
-    this.render();
+
+    // 创建 spinner
+    this.spinner = ora({
+      text: this.formatText(),
+      spinner: "dots",
+      prefixText: this.formatProgressBar(),
+    }).start();
+
+    // 启动定时器，每 100ms 更新一次时间显示
+    this.timer = setInterval(() => {
+      this.updateDisplay();
+    }, 100);
   }
 
   /**
@@ -61,7 +74,7 @@ class ProgressManager {
    */
   updateDownload(): void {
     this.downloadCompleted++;
-    this.render();
+    this.updateDisplay();
   }
 
   /**
@@ -69,7 +82,7 @@ class ProgressManager {
    */
   updateCompress(): void {
     this.compressedCount++;
-    this.render();
+    this.updateDisplay();
   }
 
   /**
@@ -77,14 +90,26 @@ class ProgressManager {
    */
   completeFile(): void {
     this.completedFiles++;
-    this.clearLines();
+    this.stopTimer();
+
+    if (this.spinner) {
+      // 清除当前行，不显示完成信息
+      this.spinner.stop();
+      this.spinner = null;
+    }
   }
 
   /**
    * 全部完成
    */
   finish(): void {
-    this.clearLines();
+    this.stopTimer();
+
+    if (this.spinner) {
+      this.spinner.stop();
+      this.spinner = null;
+    }
+
     const totalTime = this.formatTime(Date.now() - this.startTime);
     console.log(
       this.createProgressBar(this.totalFiles, this.totalFiles) +
@@ -94,46 +119,53 @@ class ProgressManager {
   }
 
   /**
-   * 渲染进度显示
+   * 更新显示（由定时器或事件触发）
    */
-  private render(): void {
-    this.clearLines();
+  private updateDisplay(): void {
+    if (this.spinner) {
+      this.spinner.prefixText = this.formatProgressBar();
+      this.spinner.text = this.formatText();
+    }
+  }
 
+  /**
+   * 停止定时器
+   */
+  private stopTimer(): void {
+    if (this.timer) {
+      clearInterval(this.timer);
+      this.timer = null;
+    }
+  }
+
+  /**
+   * 格式化进度条行
+   */
+  private formatProgressBar(): string {
     const totalTime = this.formatTime(Date.now() - this.startTime);
-    const fileTime = this.formatTime(Date.now() - this.fileStartTime);
-
-    // 总进度行
     const progressBar = this.createProgressBar(
       this.completedFiles,
       this.totalFiles,
     );
-    const progressLine = `${progressBar} ${this.completedFiles}/${this.totalFiles} | 累计 ${totalTime}`;
-
-    // 当前文件行
-    let currentLine = `[当前] ${this.currentFileName}`;
-    if (this.downloadTotal > 0) {
-      currentLine += ` | 下载 ${this.downloadCompleted}/${this.downloadTotal}`;
-    }
-    if (this.compressedCount > 0) {
-      currentLine += ` | 压缩 ${this.compressedCount}`;
-    }
-    currentLine += ` | ${fileTime}`;
-
-    // 输出
-    console.log(progressLine);
-    console.log(currentLine);
-    this.lastLineCount = 2;
+    return `${progressBar} ${this.completedFiles}/${this.totalFiles} | 累计 ${totalTime}\n`;
   }
 
   /**
-   * 清除之前输出的行
+   * 格式化当前文件行
    */
-  private clearLines(): void {
-    if (this.lastLineCount > 0) {
-      // 移动光标到上面 N 行，然后清除到屏幕底部
-      process.stdout.write(`\x1b[${this.lastLineCount}A\x1b[0J`);
-      this.lastLineCount = 0;
+  private formatText(): string {
+    const fileTime = this.formatTime(Date.now() - this.fileStartTime);
+
+    let text = this.currentFileName;
+    if (this.downloadTotal > 0) {
+      text += ` | 下载 ${this.downloadCompleted}/${this.downloadTotal}`;
     }
+    if (this.compressedCount > 0) {
+      text += ` | 压缩 ${this.compressedCount}`;
+    }
+    text += ` | ${fileTime}`;
+
+    return text;
   }
 
   /**
