@@ -29,8 +29,9 @@
   - 某个 Markdown 文件路径，例如 `C:\Notes\foo.md`
   - 某个目录路径，例如 `C:\Notes`
 - 输出位置：
-  - 单文件模式：在同目录生成 `foo_localized/`，并包含 `assets/`
-  - 目录模式：在同级生成 `Notes_localized/`，保持原有层级结构与 `assets/`
+  - 单文件模式：在同目录生成 `foo_localized/part_1/`，并包含 `assets/`
+  - 目录模式：在同级生成 `Notes_localized/part_X/`，保持原有层级结构与 `assets/`
+  - 每个分区约 50MB，超过后自动创建新分区（当前文件会处理完再切换）
 - 若目标目录已存在，会进行交互确认；按回车或输入 `y/yes` 继续，输入 `n` 取消
 
 示例（本地构建后运行）：
@@ -54,7 +55,8 @@ node dist/main.cjs
   - 超过 10MB 的大图会进行渐进式压缩：首先转 WebP；仍超出则缩放至最大宽度 2560px 并降低质量；最后"保底"极限压缩（quality≈60）
   - SVG 矢量图保持原格式不变
 - 进度与日志
-  - 使用优雅的命令行进度动画显示当前下载项目与累计进度
+  - 单行实时进度显示：`⠼ ░░░░░░░░░░░░░░░░░░░░ 0/86 | 分区1 (12MB) | 文件名.md (5s) | ↓ 4/7 | 30s`
+  - 显示内容：总进度、分区大小、当前文件、下载/压缩状态、累计时间
   - 处理完成后在输出目录生成 `image-log-*.txt`，记录成功/失败、尺寸变化与汇总统计
 
 ## 常见问答
@@ -64,6 +66,7 @@ node dist/main.cjs
 - 我能调整并发或压缩阈值吗？可以，修改源码中的常量后重新构建：
   - 并发与大图阈值：[`utils/Semaphore.ts`](./utils/Semaphore.ts)
   - 压缩目标与质量：[`utils/imageCompression.ts`](./utils/imageCompression.ts)
+  - 分区大小限制：[`main.ts`](./main.ts) 中的 `PARTITION_SIZE_LIMIT`
 
 ## 代码入口与关键模块
 
@@ -72,9 +75,9 @@ node dist/main.cjs
 - 下载、本地化与重写：[`utils/downloader.ts`](./utils/downloader.ts)
 - 图片压缩与格式转换：[`utils/imageCompression.ts`](./utils/imageCompression.ts)
 - 并发控制（信号量）：[`utils/Semaphore.ts`](./utils/Semaphore.ts)
-- 下载进度动画：[`utils/downloadProgress.ts`](./utils/downloadProgress.ts)
-- 压缩进度动画：[`utils/compressionProgress.ts`](./utils/compressionProgress.ts)
+- 统一进度管理：[`utils/progressManager.ts`](./utils/progressManager.ts)
 - 处理日志管理：[`utils/imageLog.ts`](./utils/imageLog.ts)
+- 文件夹大小计算：[`utils/getFolderSize.ts`](./utils/getFolderSize.ts)
 
 ## 构建与发布
 
@@ -83,6 +86,13 @@ node dist/main.cjs
 - 包配置与入口：[`package.json`](./package.json)
 
 ## 更新日志
+
+### v1.2.0
+
+- **新功能**：分区输出 - 自动将输出按约 50MB 分割为多个 `part_X` 文件夹，方便管理和传输
+- **优化**：全新的单行进度显示，不再闪烁抖动
+- **优化**：实时显示分区大小、下载/压缩状态、累计时间
+- **优化**：精简日志输出，移除冗余信息
 
 ### v1.1.0
 
