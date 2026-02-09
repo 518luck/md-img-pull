@@ -6,12 +6,13 @@ import fs from "fs-extra";
 import path from "path";
 // 并发控制已移至 downloader.ts 中使用 Semaphore 实现
 import { downloadAndLocalize } from "./downloader";
-import { downloadProgress } from "./downloadProgress";
 import { imageLog } from "./imageLog";
+import { progressManager } from "./progressManager";
 
 export async function processSingleMarkdown(srcPath: string, distPath: string) {
   // 设置当前处理的 Markdown 文件名（用于日志记录）
-  imageLog.setCurrentFile(path.basename(srcPath));
+  const fileName = path.basename(srcPath);
+  imageLog.setCurrentFile(fileName);
 
   // 1. 读取 Markdown 文件内容
   const content = await fs.readFile(srcPath, "utf-8");
@@ -49,8 +50,8 @@ export async function processSingleMarkdown(srcPath: string, distPath: string) {
         }
       });
 
-      // 启动下载进度 spinner（传入总图片数）
-      downloadProgress.start(imageNodes.length);
+      // 启动当前文件的进度显示
+      progressManager.startFile(fileName, imageNodes.length);
 
       // 并发控制已移至 downloadAndLocalize 内部，使用 Semaphore 实现
       // 普通图片：占用 1 个槽位，最多 5 个并发
@@ -62,8 +63,8 @@ export async function processSingleMarkdown(srcPath: string, distPath: string) {
 
       await Promise.all(promises);
 
-      // 结束下载进度 spinner
-      downloadProgress.finish();
+      // 完成当前文件
+      progressManager.completeFile();
     })
     .use(remarkStringify);
 
@@ -73,6 +74,4 @@ export async function processSingleMarkdown(srcPath: string, distPath: string) {
   // 3. 写入本地化后的 Markdown 文件
   await fs.ensureDir(path.dirname(distPath));
   await fs.writeFile(distPath, result.toString());
-  // .basename(): 顾名思义，取路径的“基准”部分（即最后一段）。
-  console.log(`Markdown 文件 ${path.basename(distPath)} 已成功本地化！`); // 这个地方可以添加文件名称
 }

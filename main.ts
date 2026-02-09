@@ -7,6 +7,7 @@ import { stdin as input, stdout as output } from "node:process"; // 用于从命
 import chalk from "chalk";
 import { imageLog } from "./utils/imageLog";
 import { getFolderSize, formatSize } from "./utils/getFolderSize";
+import { progressManager } from "./utils/progressManager";
 const log = console.log;
 
 // 分区大小限制（50MB）
@@ -65,8 +66,6 @@ async function runBatch() {
       log(chalk.blue("继续执行，正在更新目标目录..."));
     }
 
-    log(`${chalk.blue.bold("▶ 原目录: ")} ${chalk.gray(srcAbsPath)}`);
-
     const stats = await fs.stat(srcAbsPath);
     let mdFiles: string[] = [];
     let finalDistAbsPath = distAbsPath;
@@ -90,8 +89,8 @@ async function runBatch() {
       mdFiles = allFiles.filter((f) => f.endsWith(".md"));
     }
 
-    // 更新一下 log 里的目标目录显示
-    log(`${chalk.blue.bold("▶ 目标目录:")} ${chalk.gray(finalDistAbsPath)}\n`);
+    // 初始化进度管理器（显示原目录和目标目录）
+    progressManager.init(srcAbsPath, finalDistAbsPath, mdFiles.length);
 
     // 分区计数器和当前分区路径
     let partitionIndex = 1;
@@ -121,19 +120,8 @@ async function runBatch() {
       // 处理完一个 md 文件后，检查当前分区大小
       const currentPartitionSize = await getFolderSize(currentPartitionPath);
 
-      log(
-        chalk.gray(
-          `  当前分区 part_${partitionIndex} 大小: ${formatSize(currentPartitionSize)}`,
-        ),
-      );
-
       // 如果当前分区超过 50MB，创建新分区（下一个文件会放到新分区）
       if (currentPartitionSize >= PARTITION_SIZE_LIMIT) {
-        log(
-          chalk.yellow(
-            `\n分区 part_${partitionIndex} 已达到 ${formatSize(currentPartitionSize)}，创建新分区...`,
-          ),
-        );
         partitionIndex++;
         currentPartitionPath = path.join(
           finalDistAbsPath,
@@ -142,10 +130,13 @@ async function runBatch() {
       }
     }
 
+    // 完成所有处理，显示最终进度
+    progressManager.finish();
+
     // 保存日志文件到输出目录
     await imageLog.saveToFile(finalDistAbsPath);
 
-    log(chalk.green.bold(`\n全部处理完成！`));
+    log(chalk.green.bold(`全部处理完成！`));
     log(chalk.green(`共创建 ${partitionIndex} 个分区`));
     log(
       chalk.green(`结果已保存至: `) + chalk.underline.white(finalDistAbsPath),

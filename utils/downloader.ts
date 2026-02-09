@@ -10,8 +10,8 @@ import {
   LARGE_IMAGE_THRESHOLD,
   TOTAL_PERMITS,
 } from "./Semaphore";
-import { downloadProgress } from "./downloadProgress";
 import { imageLog } from "./imageLog";
+import { progressManager } from "./progressManager";
 
 // 类型映射
 const mimeMap: Record<string, string> = {
@@ -91,6 +91,8 @@ export async function downloadAndLocalize(node: Image, assetDir: string) {
       if (imageData.length > MAX_SIZE) {
         // 大于 10MB 的图片：压缩并转换为 webp
         imageData = await compressImage(imageData);
+        // 更新压缩计数
+        progressManager.updateCompress();
       } else {
         // 小于等于 10MB 的图片：只转换格式为 webp，保持原始质量
         imageData = await convertToWebp(imageData);
@@ -108,8 +110,8 @@ export async function downloadAndLocalize(node: Image, assetDir: string) {
       await fs.writeFile(localPath, imageData);
     }
 
-    // 6. 更新进度（使用 spinner 而不是 console.log）
-    downloadProgress.complete(fileName);
+    // 6. 更新下载进度
+    progressManager.updateDownload();
 
     // 7. 记录日志
     const originalSize = response.data.byteLength;
@@ -125,7 +127,7 @@ export async function downloadAndLocalize(node: Image, assetDir: string) {
     node.url = `./assets/${fileName}`;
   } catch (err) {
     // 下载失败时也要更新进度
-    downloadProgress.fail(node.url);
+    progressManager.updateDownload();
     // 记录失败日志（错误信息会保存到日志文件）
     imageLog.addFailed(node.url, String(err));
   } finally {

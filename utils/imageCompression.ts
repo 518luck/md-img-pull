@@ -1,5 +1,4 @@
 import sharp from "sharp";
-import { compressionProgress } from "./compressionProgress";
 
 // 提取通用的 sharp 配置
 const SHARP_OPTIONS = {
@@ -31,39 +30,23 @@ export async function compressImage(inputBuffer: Buffer): Promise<Buffer> {
     return inputBuffer;
   }
 
-  const originalSize = (inputBuffer.length / 1024 / 1024).toFixed(2);
-  const taskInfo = `${originalSize}MB → 转换为 WebP`;
+  // 统一转 WebP (保持动画)
+  let currentBuffer = await image.webp({ quality: 80, effort: 6 }).toBuffer();
 
-  // 使用压缩进度管理器（会自动暂停下载 spinner）
-  const updateProgress = compressionProgress.start(taskInfo);
-
-  try {
-    // 统一转 WebP (保持动画)
-    let currentBuffer = await image.webp({ quality: 80, effort: 6 }).toBuffer();
-
-    // --- 策略 1: 如果还是太大，缩小分辨率 ---
-    if (currentBuffer.length > MAX_SIZE) {
-      updateProgress(`${originalSize}MB → 缩小分辨率至 2560px`);
-      currentBuffer = await sharp(inputBuffer, SHARP_OPTIONS)
-        .resize(2560, undefined, { withoutEnlargement: true })
-        .webp({ quality: 75 })
-        .toBuffer();
-    }
-
-    // --- 策略 2: 极限压缩 (保底) ---
-    if (currentBuffer.length > MAX_SIZE) {
-      updateProgress(`${originalSize}MB → 极限压缩 (quality: 60)`);
-      currentBuffer = await sharp(currentBuffer, SHARP_OPTIONS)
-        .webp({ quality: 60 })
-        .toBuffer();
-    }
-
-    const finalSize = (currentBuffer.length / 1024 / 1024).toFixed(2);
-    compressionProgress.complete(`压缩完成: ${originalSize}MB → ${finalSize}MB`);
-
-    return currentBuffer;
-  } catch (error) {
-    compressionProgress.fail(`压缩失败: ${error}`);
-    throw error;
+  // --- 策略 1: 如果还是太大，缩小分辨率 ---
+  if (currentBuffer.length > MAX_SIZE) {
+    currentBuffer = await sharp(inputBuffer, SHARP_OPTIONS)
+      .resize(2560, undefined, { withoutEnlargement: true })
+      .webp({ quality: 75 })
+      .toBuffer();
   }
+
+  // --- 策略 2: 极限压缩 (保底) ---
+  if (currentBuffer.length > MAX_SIZE) {
+    currentBuffer = await sharp(currentBuffer, SHARP_OPTIONS)
+      .webp({ quality: 60 })
+      .toBuffer();
+  }
+
+  return currentBuffer;
 }
