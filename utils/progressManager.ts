@@ -42,9 +42,8 @@ class ProgressManager {
     this.completedFiles = 0;
     this.startTime = Date.now();
 
-    // 打印固定的头部信息
-    console.log(chalk.blue.bold("▶ 原目录: ") + chalk.gray(srcPath));
-    console.log(chalk.blue.bold("▶ 目标目录:") + chalk.gray(distPath));
+    // 只打印目标目录
+    console.log(chalk.blue.bold("▶ 目标目录: ") + chalk.gray(distPath));
     console.log(""); // 空行
   }
 
@@ -146,7 +145,7 @@ class ProgressManager {
     );
     console.log(
       chalk.green("OK") +
-        ` ${progressBar} ${this.completedFiles}/${this.totalFiles} | 累计 ${totalTime}`,
+        ` ${progressBar} ${this.completedFiles}/${this.totalFiles} | ${totalTime}`,
     );
     console.log("");
   }
@@ -186,21 +185,18 @@ class ProgressManager {
     if (this.isCompressing) {
       status = "压缩中";
     } else if (this.downloadTotal > 0) {
-      status = `下载 ${this.downloadCompleted}/${this.downloadTotal}`;
+      status = `↓ ${this.downloadCompleted}/${this.downloadTotal}`;
     }
 
     // 组装单行文本
+    // 格式: ⠼ ░░░░░░░░░░░░░░░░░░░░ 0/86 | 分区1 (0 B) | 第01章—关于本小册.md (44s) | ↓ 4/7 | 44s
     let text = `${progressBar} ${this.completedFiles}/${this.totalFiles}`;
     text += ` | 分区${this.partitionIndex} (${this.cachedPartitionSize})`;
-    text += ` | ${this.currentFileName}`;
+    text += ` | ${this.currentFileName} (${fileTime})`;
     if (status) {
       text += ` | ${status}`;
     }
-    if (this.compressedCount > 0) {
-      text += ` | 已压缩 ${this.compressedCount}`;
-    }
-    text += ` | ${fileTime}`;
-    text += chalk.gray(` | 累计 ${totalTime}`);
+    text += ` | ${totalTime}`;
 
     return text;
   }
