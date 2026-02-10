@@ -1,15 +1,8 @@
 import chalk from "chalk";
 import ora, { type Ora } from "ora";
-import { getFolderSize, formatSize } from "./getFolderSize";
 
 /**
- * 统一进度管理器 - 单行紧凑风格
- *
- * 显示格式：
- * ▶ 原目录: c:\Users\zhang\Desktop\Three.js通关秘籍
- * ▶ 目标目录:c:\Users\zhang\Desktop\Three.js通关秘籍_localized
- *
- * ⠹ ░░░░░░░░░░░░░░░░░░░░ 0/243 | 分区1 (12.5MB) | 1. 开篇词.md | 下载 6/7 | 29s
+ * 统一进度管理器 - 使用 ora（稳定版）
  */
 class ProgressManager {
   private totalFiles = 0;
@@ -21,71 +14,65 @@ class ProgressManager {
   private currentFileName = "";
   private downloadTotal = 0;
   private downloadCompleted = 0;
-  private compressedCount = 0;
-  private isCompressing = false; // 是否正在压缩
+  private isCompressing = false;
 
   // 分区信息
   private partitionIndex = 1;
-  private partitionPath = "";
-  private cachedPartitionSize = "0 B";
+  private partitionSize = "0 B";
 
-  // ora spinner 实例
+  // ora spinner
   private spinner: Ora | null = null;
-  // 定时器（用于实时更新时间）
+  // 定时器（只用于更新时间）
   private timer: ReturnType<typeof setInterval> | null = null;
 
   /**
-   * 初始化进度管理器
+   * 初始化
    */
-  init(srcPath: string, distPath: string, totalFiles: number): void {
+  init(_srcPath: string, distPath: string, totalFiles: number): void {
     this.totalFiles = totalFiles;
     this.completedFiles = 0;
     this.startTime = Date.now();
 
-    // 只打印目标目录
     console.log(chalk.blue.bold("▶ 目标目录: ") + chalk.gray(distPath));
-    console.log(""); // 空行
+    console.log("");
   }
 
   /**
-   * 设置当前分区信息
+   * 设置分区
    */
-  setPartition(index: number, partitionPath: string): void {
+  setPartition(index: number, _path: string): void {
     this.partitionIndex = index;
-    this.partitionPath = partitionPath;
   }
 
   /**
-   * 异步更新分区大小缓存
+   * 设置分区大小
    */
-  async updatePartitionSize(): Promise<void> {
-    if (this.partitionPath) {
-      const size = await getFolderSize(this.partitionPath);
-      this.cachedPartitionSize = formatSize(size);
-    }
+  setPartitionSize(size: string): void {
+    this.partitionSize = size;
   }
 
   /**
-   * 开始处理一个新文件
+   * 开始处理文件
    */
   startFile(fileName: string, imageCount: number): void {
     this.currentFileName = fileName;
     this.downloadTotal = imageCount;
     this.downloadCompleted = 0;
-    this.compressedCount = 0;
     this.isCompressing = false;
     this.fileStartTime = Date.now();
 
-    // 创建 spinner（单行显示）
+    // 创建 spinner
     this.spinner = ora({
-      text: this.formatText(),
+      text: this.getText(),
       spinner: "dots",
     }).start();
 
-    // 启动定时器，每 200ms 更新一次时间显示
+    // 每 500ms 更新一次时间
     this.timer = setInterval(() => {
-      this.updateDisplay();
-    }, 200);
+      if (this.spinner) {
+        this.spinner.text = this.getText();
+      }
+    }, 500);
   }
 
   /**
@@ -94,24 +81,29 @@ class ProgressManager {
   updateDownload(): void {
     this.downloadCompleted++;
     this.isCompressing = false;
-    this.updateDisplay();
+    if (this.spinner) {
+      this.spinner.text = this.getText();
+    }
   }
 
   /**
-   * 开始压缩（设置压缩状态）
+   * 开始压缩
    */
   startCompress(): void {
     this.isCompressing = true;
-    this.updateDisplay();
+    if (this.spinner) {
+      this.spinner.text = this.getText();
+    }
   }
 
   /**
-   * 更新压缩计数
+   * 完成压缩
    */
   updateCompress(): void {
-    this.compressedCount++;
     this.isCompressing = false;
-    this.updateDisplay();
+    if (this.spinner) {
+      this.spinner.text = this.getText();
+    }
   }
 
   /**
@@ -120,7 +112,6 @@ class ProgressManager {
   completeFile(): void {
     this.completedFiles++;
     this.stopTimer();
-
     if (this.spinner) {
       this.spinner.stop();
       this.spinner = null;
@@ -132,36 +123,17 @@ class ProgressManager {
    */
   finish(): void {
     this.stopTimer();
-
     if (this.spinner) {
       this.spinner.stop();
       this.spinner = null;
     }
 
-    const totalTime = this.formatTime(Date.now() - this.startTime);
-    const progressBar = this.createProgressBar(
-      this.totalFiles,
-      this.totalFiles,
-    );
-    console.log(
-      chalk.green("OK") +
-        ` ${progressBar} ${this.completedFiles}/${this.totalFiles} | ${totalTime}`,
-    );
+    const time = this.formatTime(Date.now() - this.startTime);
+    const bar = this.getBar(this.totalFiles, this.totalFiles);
+    console.log(chalk.green("OK") + ` ${bar} ${this.completedFiles}/${this.totalFiles} | ${time}`);
     console.log("");
   }
 
-  /**
-   * 更新显示（由定时器或事件触发）
-   */
-  private updateDisplay(): void {
-    if (this.spinner) {
-      this.spinner.text = this.formatText();
-    }
-  }
-
-  /**
-   * 停止定时器
-   */
   private stopTimer(): void {
     if (this.timer) {
       clearInterval(this.timer);
@@ -169,61 +141,36 @@ class ProgressManager {
     }
   }
 
-  /**
-   * 格式化单行显示文本
-   */
-  private formatText(): string {
-    const totalTime = this.formatTime(Date.now() - this.startTime);
+  private getText(): string {
+    const bar = this.getBar(this.completedFiles, this.totalFiles);
+    const time = this.formatTime(Date.now() - this.startTime);
     const fileTime = this.formatTime(Date.now() - this.fileStartTime);
-    const progressBar = this.createProgressBar(
-      this.completedFiles,
-      this.totalFiles,
-    );
 
-    // 构建状态文本
-    let status = "";
-    if (this.isCompressing) {
-      status = "压缩中";
-    } else if (this.downloadTotal > 0) {
-      status = `↓ ${this.downloadCompleted}/${this.downloadTotal}`;
+    // 截断文件名
+    let name = this.currentFileName;
+    if (name.length > 25) {
+      name = name.slice(0, 22) + "...";
     }
 
-    // 组装单行文本
-    // 格式: ⠼ ░░░░░░░░░░░░░░░░░░░░ 0/86 | 分区1 (0 B) | 第01章—关于本小册.md (44s) | ↓ 4/7 | 44s
-    let text = `${progressBar} ${this.completedFiles}/${this.totalFiles}`;
-    text += ` | 分区${this.partitionIndex} (${this.cachedPartitionSize})`;
-    text += ` | ${this.currentFileName} (${fileTime})`;
-    if (status) {
-      text += ` | ${status}`;
-    }
-    text += ` | ${totalTime}`;
+    // 状态
+    let status = this.isCompressing
+      ? "压缩中"
+      : `↓${this.downloadCompleted}/${this.downloadTotal}`;
 
-    return text;
+    return `${bar} ${this.completedFiles}/${this.totalFiles} | 分区${this.partitionIndex}(${this.partitionSize}) | ${name}(${fileTime}) | ${status} | ${time}`;
   }
 
-  /**
-   * 创建进度条
-   */
-  private createProgressBar(current: number, total: number): string {
-    const width = 20;
-    const filled = total > 0 ? Math.round((current / total) * width) : 0;
-    const empty = width - filled;
-    return chalk.green("█".repeat(filled)) + chalk.gray("░".repeat(empty));
+  private getBar(cur: number, total: number): string {
+    const w = 15;
+    const f = total > 0 ? Math.round((cur / total) * w) : 0;
+    return chalk.green("█".repeat(f)) + chalk.gray("░".repeat(w - f));
   }
 
-  /**
-   * 格式化时间
-   */
   private formatTime(ms: number): string {
-    const seconds = Math.floor(ms / 1000);
-    if (seconds < 60) {
-      return `${seconds}s`;
-    }
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}m${remainingSeconds}s`;
+    const s = Math.floor(ms / 1000);
+    if (s < 60) return `${s}s`;
+    return `${Math.floor(s / 60)}m${s % 60}s`;
   }
 }
 
-// 导出全局单例
 export const progressManager = new ProgressManager();

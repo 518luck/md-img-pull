@@ -121,8 +121,8 @@ async function runBatch() {
       await processSingleMarkdown(mdFile, targetMdPath);
 
       // 处理完一个 md 文件后，更新分区大小并检查
-      await progressManager.updatePartitionSize();
       const currentPartitionSize = await getFolderSize(currentPartitionPath);
+      progressManager.setPartitionSize(formatSize(currentPartitionSize));
 
       // 如果当前分区超过 50MB，创建新分区（下一个文件会放到新分区）
       if (currentPartitionSize >= PARTITION_SIZE_LIMIT) {
@@ -133,6 +133,7 @@ async function runBatch() {
         );
         // 更新分区信息
         progressManager.setPartition(partitionIndex, currentPartitionPath);
+        progressManager.setPartitionSize("0 B");
       }
     }
 
