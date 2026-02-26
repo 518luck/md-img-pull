@@ -66,6 +66,7 @@ async function runBatch() {
       log(chalk.blue("继续执行，正在更新目标目录..."));
     }
 
+    // fs.stat 检查路径是否存在并获取文件/文件夹信息
     const stats = await fs.stat(srcAbsPath);
     let mdFiles: string[] = [];
     let finalDistAbsPath = distAbsPath;

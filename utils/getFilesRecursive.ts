@@ -5,10 +5,16 @@ import path from "path";
 export async function getFilesRecursive(dir: string): Promise<string[]> {
   // 读取目录下所有子项（文件和文件夹）readdir是"read directory" 的缩写
   const subdirs = await fs.readdir(dir);
+  // 自然排序：让数字按数值大小排序，而不是字符串字典序（避免 1, 10, 2 这种顺序）
+  subdirs.sort((a, b) =>
+    a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }),
+  );
+  console.log("🚀 ~ getFilesRecursive ~ subdirs:", subdirs);
   const files = await Promise.all(
     //返回数组
     subdirs.map(async (subdir) => {
-      //它会从右向左处理路径片段，直到构造出一个绝对路径 自动根据你的操作系统选择正确的斜杠。
+      //它会从右向左处理路径片段，直到构造出一个绝对路径。
+      //path.resolve() 自动根据你的操作系统选择正确的斜杠。
       const res = path.resolve(dir, subdir);
       //fs.stat(res) “探测”路径 res 的详细信息 返回一个对象，包含文件的大小、创建时间、类型等信息。
       //.isDirectory() “判断”这是否是一个文件夹
