@@ -9,7 +9,6 @@ export async function getFilesRecursive(dir: string): Promise<string[]> {
   subdirs.sort((a, b) =>
     a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }),
   );
-  console.log("🚀 ~ getFilesRecursive ~ subdirs:", subdirs);
   const files = await Promise.all(
     //返回数组
     subdirs.map(async (subdir) => {
